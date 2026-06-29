@@ -1,0 +1,20 @@
+# ความลับ — ห้ามขึ้น git เด็ดขาด
+.env
+
+# การตั้งค่าเครื่องมือส่วนตัว
+.claude/
+
+# dependencies (ติดตั้งใหม่ได้ด้วย npm install)
+node_modules/
+
+# ไฟล์ต้นฉบับที่ดาวน์โหลด (สร้างใหม่ได้ทุกครั้งที่รัน build-data.js)
+pinksheet.xlsx
+
+# ไฟล์ json ทดสอบ/ชั่วคราว
+ct_test.json
+ct2.json
+id.json
+multi.json
+tmp.json
+yaso.csv
+*.tmp

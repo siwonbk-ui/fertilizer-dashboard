@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard เปรียบเทียบราคาปุ๋ยเคมี | Fertilizer Price Compare</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- ข้อมูลราคาจริงจาก World Bank Pink Sheet (สร้างโดย build-data.js) -->
+  <script src="data.js"></script>
+  <!-- ราคารายประเทศจริงจาก UN Comtrade (สร้างโดย build-comtrade.js) -->
+  <script src="data-comtrade.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Sarabun', 'Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            leaf: {
+              50:'#f3f8f3',100:'#e2efe2',200:'#c4dfc6',300:'#9bc69f',400:'#6ba771',
+              500:'#4a8a51',600:'#386f3f',700:'#2e5934',800:'#27482c',900:'#213c26',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'Sarabun', 'Inter', system-ui, sans-serif; }
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #c4dfc6; border-radius: 9999px; }
+    .fade-in { animation: fade 0.4s ease both; }
+    @keyframes fade { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+  </style>
+</head>
+
+<body class="bg-stone-50 text-slate-700 antialiased">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="bg-gradient-to-r from-leaf-700 to-leaf-600 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-2xl shrink-0">🌱</div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold leading-tight">Dashboard เปรียบเทียบราคาปุ๋ยเคมี</h1>
+          <p class="text-leaf-100 text-xs sm:text-sm">ราคาอ้างอิงโลกจาก World Bank Pink Sheet · ไทยเทียบประเทศผู้ส่งออกหลัก</p>
+        </div>
+      </div>
+      <div class="hidden sm:flex flex-col items-end text-right">
+        <span class="text-xs text-leaf-100">ข้อมูลล่าสุด</span>
+        <span id="lastUpdate" class="text-sm font-semibold">—</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- แบนเนอร์แจ้งที่มาข้อมูล -->
+    <div id="sourceBanner" class="rounded-2xl bg-leaf-50 border border-leaf-200 px-4 py-3 text-sm text-leaf-800 flex items-start gap-3">
+      <span class="text-lg leading-none">ℹ️</span>
+      <div id="sourceText" class="leading-relaxed"></div>
+    </div>
+
+    <!-- ===================== CONTROL / FILTERS ===================== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 sm:p-5">
+      <!-- เลือกแหล่งข้อมูล -->
+      <div class="mb-4 pb-4 border-b border-stone-100">
+        <label class="block text-sm font-semibold text-slate-600 mb-2">แหล่งข้อมูลราคา</label>
+        <div class="inline-flex flex-wrap gap-2">
+          <button data-src="pinksheet" class="src-btn rounded-xl border px-4 py-2 text-sm font-semibold transition text-left">
+            <div class="font-bold">World Bank Pink Sheet</div>
+            <div class="text-xs font-normal opacity-80">ราคาอ้างอิงโลก · มีแนวโน้มย้อนหลัง · ทุกชนิดปุ๋ย</div>
+          </button>
+          <button data-src="comtrade" class="src-btn rounded-xl border px-4 py-2 text-sm font-semibold transition text-left">
+            <div class="font-bold">UN Comtrade</div>
+            <div class="text-xs font-normal opacity-80">ราคารายประเทศจริง (มูลค่า÷น้ำหนัก) · เฉพาะที่มีข้อมูล</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+        <div class="md:col-span-3">
+          <label class="block text-sm font-semibold text-slate-600 mb-1.5">ประเภทปุ๋ย</label>
+          <select id="fertSelect" class="w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-sm focus:ring-2 focus:ring-leaf-400 focus:border-leaf-400 outline-none transition"></select>
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-sm font-semibold text-slate-600 mb-1.5">หน่วยราคา / สกุลเงิน</label>
+          <div class="inline-flex w-full rounded-xl bg-stone-100 p-1 border border-stone-200">
+            <button data-cur="USD" class="cur-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition">USD / ตัน</button>
+            <button data-cur="THB" class="cur-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition">THB / ตัน</button>
+          </div>
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-sm font-semibold text-slate-600 mb-1.5">อัตราแลกเปลี่ยน <span class="text-stone-400 font-normal">(USD → THB)</span></label>
+          <div class="relative">
+            <input id="fxRate" type="number" step="0.01" value="36.50" class="w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-sm focus:ring-2 focus:ring-leaf-400 focus:border-leaf-400 outline-none transition" />
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">บาท</span>
+          </div>
+          <div id="fxStatus" class="text-[11px] text-stone-400 mt-1 flex items-center gap-1">กำลังโหลดเรตล่าสุด…</div>
+        </div>
+        <div class="md:col-span-3" id="rangeWrap">
+          <label class="block text-sm font-semibold text-slate-600 mb-1.5">ช่วงเวลา</label>
+          <select id="rangeSelect" class="w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-sm focus:ring-2 focus:ring-leaf-400 focus:border-leaf-400 outline-none transition">
+            <option value="6">6 เดือนล่าสุด</option>
+            <option value="12">12 เดือนล่าสุด</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-stone-100">
+        <div class="flex items-center justify-between mb-2">
+          <label class="block text-sm font-semibold text-slate-600">เลือกประเทศที่ต้องการเปรียบเทียบ</label>
+          <button id="resetBtn" class="text-xs font-semibold text-leaf-600 hover:text-leaf-700">รีเซ็ตค่าเริ่มต้น</button>
+        </div>
+        <div id="countryChips" class="flex flex-wrap gap-2"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PRICE CARDS ===================== -->
+    <section>
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-base sm:text-lg font-bold text-slate-700">ราคาปุ๋ยล่าสุด — <span id="cardFertName" class="text-leaf-600"></span></h2>
+        <span class="text-xs text-stone-400">เทียบกับเดือนก่อนหน้า</span>
+      </div>
+      <div id="priceCards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4"></div>
+    </section>
+
+    <!-- ===================== CHART + INSIGHT ===================== -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-stone-200 p-4 sm:p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-700">แนวโน้มราคา</h3>
+            <p class="text-xs text-stone-400" id="chartSub">Price Trend</p>
+          </div>
+          <div id="chartModeWrap" class="inline-flex rounded-xl bg-stone-100 p-1 border border-stone-200 text-xs">
+            <button data-mode="price" class="chart-mode-btn rounded-lg px-3 py-1.5 font-semibold transition">ราคา</button>
+            <button data-mode="mom" class="chart-mode-btn rounded-lg px-3 py-1.5 font-semibold transition">% เปลี่ยนแปลง</button>
+          </div>
+        </div>
+        <div class="relative h-72 sm:h-80"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 sm:p-5 flex flex-col">
+        <h3 class="text-base font-bold text-slate-700 mb-3">สรุปเชิงเปรียบเทียบ</h3>
+        <div id="insightBox" class="space-y-3 text-sm flex-1"></div>
+        <!-- ปรับ offset รายประเทศ -->
+        <div class="mt-4 pt-4 border-t border-stone-100" id="offsetWrap">
+          <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-2 cursor-pointer">
+            <input id="offsetToggle" type="checkbox" checked class="rounded accent-leaf-600" />
+            แสดงค่าประมาณ FOB รายประเทศ
+          </label>
+          <p class="text-xs text-stone-400 leading-relaxed">
+            ปิดสวิตช์นี้เพื่อแสดง<strong>ราคา benchmark โลกจริง</strong>ค่าเดียว (ทุกประเทศตรงกัน)
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== COMPARISON TABLE ===================== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+      <div class="px-4 sm:px-5 py-4 border-b border-stone-100 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-700">ตารางเปรียบเทียบราคา (เดือนล่าสุด)</h3>
+        <button id="exportBtn" class="text-xs font-semibold text-leaf-600 hover:text-leaf-700 border border-leaf-200 rounded-lg px-3 py-1.5">⬇ ดาวน์โหลด CSV</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-stone-50 text-slate-500">
+            <tr>
+              <th class="text-left font-semibold px-4 sm:px-5 py-3">ประเทศ</th>
+              <th class="text-right font-semibold px-4 py-3">ราคาล่าสุด</th>
+              <th class="text-right font-semibold px-4 py-3" id="colChange">เปลี่ยนแปลง</th>
+              <th class="text-right font-semibold px-4 py-3 hidden sm:table-cell" id="colMin">ต่ำสุด</th>
+              <th class="text-right font-semibold px-4 py-3 hidden sm:table-cell" id="colMax">สูงสุด</th>
+              <th class="text-right font-semibold px-4 sm:px-5 py-3">เทียบราคาไทย</th>
+            </tr>
+          </thead>
+          <tbody id="compareTable" class="divide-y divide-stone-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-stone-400 py-6 leading-relaxed">
+      ที่มาข้อมูล: <a id="srcLink" href="#" target="_blank" class="underline hover:text-leaf-600">World Bank Pink Sheet</a>
+      (ราคาอ้างอิงโลก + แนวโน้ม) · <a href="https://comtradeplus.un.org" target="_blank" class="underline hover:text-leaf-600">UN Comtrade</a> (ราคารายประเทศจริง)<br/>
+      อัปเดตข้อมูล: <code class="bg-stone-100 px-1.5 py-0.5 rounded">node build-data.js</code> และ <code class="bg-stone-100 px-1.5 py-0.5 rounded">node build-comtrade.js</code>
+    </footer>
+  </main>
+
+  <script>
+  /* =====================================================================
+     CONFIG — การ map ข้อมูลจริง + ค่าประมาณรายประเทศ
+  ===================================================================== */
+
+  // ชนิดปุ๋ยที่แสดง -> key ใน FERT_DATA.benchmark
+  const FERTILIZERS = [
+    { id: 'urea',           name: 'ยูเรีย 46-0-0',          dataKey: 'urea' },
+    { id: 'dap',            name: 'ฟอสเฟต (DAP 18-46-0)',    dataKey: 'dap' },
+    { id: 'mop',            name: 'โพแทสเซียม (MOP 0-0-60)', dataKey: 'mop' },
+    { id: 'phosphate_rock', name: 'หินฟอสเฟต (Phosphate Rock)', dataKey: 'phosphate_rock' },
+  ];
+
+  /* ค่าประมาณ FOB รายประเทศ (offset เป็น % จากราคา benchmark โลก)
+     - ไทย = ผู้นำเข้า ราคาถึงท่า/ตลาดในประเทศสูงกว่า benchmark (+)
+     - ประเทศผู้ส่งออก = ราคา FOB หน้าโรงงานต่ำกว่า benchmark (-)
+     ค่าเหล่านี้เป็น "สมมติฐานเชิงโครงสร้าง" เพื่อการเปรียบเทียบเชิงเปรียบเปรย
+     ไม่ใช่ราคาซื้อขายจริงรายประเทศ — Pink Sheet ไม่ได้แยกตามประเทศ */
+  const COUNTRIES = [
+    { code:'TH', name:'ไทย',            flag:'🇹🇭', color:'#386f3f', isHome:true, offsetPct:{urea:+0.08, dap:+0.07, mop:+0.09, phosphate_rock:+0.12} },
+    { code:'RU', name:'รัสเซีย',         flag:'🇷🇺', color:'#c0392b', offsetPct:{urea:-0.10, dap:-0.07, mop:-0.11, phosphate_rock:-0.05} },
+    { code:'SA', name:'ซาอุดีอาระเบีย', flag:'🇸🇦', color:'#16a085', offsetPct:{urea:-0.06, dap:-0.05, mop:+0.00, phosphate_rock:-0.02} },
+    { code:'BN', name:'บรูไน',          flag:'🇧🇳', color:'#e67e22', offsetPct:{urea:-0.05, dap:+0.02, mop:+0.03, phosphate_rock:+0.04} },
+    { code:'ID', name:'อินโดนีเซีย',     flag:'🇮🇩', color:'#8e44ad', offsetPct:{urea:-0.08, dap:-0.03, mop:+0.01, phosphate_rock:+0.02} },
+    { code:'CN', name:'จีน',            flag:'🇨🇳', color:'#d4a017', offsetPct:{urea:-0.07, dap:-0.06, mop:-0.04, phosphate_rock:-0.03} },
+  ];
+
+  /* =====================================================================
+     STATE
+  ===================================================================== */
+  const D = window.FERT_DATA;                 // Pink Sheet (trend จริง)
+  const CT = window.COMTRADE_DATA || null;    // Comtrade (ราคารายประเทศจริง)
+  const state = {
+    source: 'pinksheet',   // 'pinksheet' | 'comtrade'
+    fert: 'urea',
+    currency: 'USD',
+    fxRate: 36.50,
+    fxManual: false,   // true = ผู้ใช้แก้เรตเอง (จะไม่ทับด้วยเรตจาก API)
+    range: 6,
+    useOffset: true,
+    chartMode: 'price',   // 'price' | 'mom' (% เปลี่ยนแปลงรายเดือน) — เฉพาะโหมด Pink Sheet
+    selected: new Set(COUNTRIES.map((c) => c.code)),
+  };
+
+  const $ = (s) => document.querySelector(s);
+  const getCountry = (code) => COUNTRIES.find((c) => c.code === code);
+  const fertDef = () => FERTILIZERS.find((f) => f.id === state.fert);
+  const isComtrade = () => state.source === 'comtrade';
+
+  /* ราคา benchmark จริง (USD/ตัน) ของชนิดปุ๋ยปัจจุบัน — slice ตามช่วงเวลา */
+  function benchSeries() {
+    const arr = D.benchmark[fertDef().dataKey] || [];
+    return arr.slice(-state.range);
+  }
+  function monthLabels() {
+    return D.months.slice(-state.range);
+  }
+
+  /* [Pink Sheet] ราคาของแต่ละประเทศ = benchmark * (1 + offset) */
+  function countrySeries(c) {
+    const bench = benchSeries();
+    if (!state.useOffset) return bench.slice();
+    const off = (c.offsetPct && c.offsetPct[state.fert]) || 0;
+    return bench.map((v) => (v == null ? null : Math.round(v * (1 + off) * 100) / 100));
+  }
+
+  /* [Comtrade] record ราคาล่าสุดของประเทศนี้ (อาจเป็น noData) */
+  function comtradeRec(c) {
+    if (!CT) return { price: null, noData: true, reason: 'noFile' };
+    return (CT.fertilizers[state.fert] && CT.fertilizers[state.fert][c.code]) || { price: null, noData: true, reason: 'noReport' };
+  }
+
+  /* ราคา "ล่าสุด" ของประเทศ ตามแหล่งที่เลือก (null = ไม่มีข้อมูล) */
+  function latestPrice(c) {
+    if (isComtrade()) return comtradeRec(c).price;
+    return countrySeries(c).at(-1);
+  }
+
+  const NO_DATA_REASON = {
+    noReport: 'ประเทศนี้ไม่รายงานข้อมูลต่อ UN Comtrade',
+    lowVolume: 'ปริมาณการค้าน้อยเกินไป ราคาต่อตันไม่น่าเชื่อถือ',
+    noFile: 'ยังไม่ได้สร้าง data-comtrade.js',
+  };
+
+  const convert = (usd) => (usd == null ? null : state.currency === 'THB' ? usd * state.fxRate : usd);
+  const fmt = (usd) => { const v = convert(usd); return v == null ? '—' : v.toLocaleString('en-US', { maximumFractionDigits: 0 }); };
+  const unitLabel = () => (state.currency === 'THB' ? 'บาท/ตัน' : 'USD/ตัน');
+
+  /* =====================================================================
+     RENDER: source / currency buttons + banner
+  ===================================================================== */
+  function renderSourceButtons() {
+    document.querySelectorAll('.src-btn').forEach((btn) => {
+      const active = btn.dataset.src === state.source;
+      btn.className = 'src-btn rounded-xl border px-4 py-2 text-sm font-semibold transition text-left ' +
+        (active ? 'bg-leaf-600 border-leaf-600 text-white shadow-sm' : 'bg-white border-stone-200 text-slate-500 hover:border-stone-300');
+    });
+    // โหมด Comtrade: ซ่อนช่วงเวลา + offset (ไม่มี trend / ใช้ราคาจริงตรงๆ)
+    const ct = isComtrade();
+    $('#rangeWrap').style.display = ct ? 'none' : '';
+    $('#offsetWrap').style.display = ct ? 'none' : '';
+    // ปุ่มสลับมุมมองกราฟ (ราคา/MoM) เฉพาะ Pink Sheet ที่มี trend
+    $('#chartModeWrap').style.display = ct ? 'none' : '';
+    document.querySelectorAll('.chart-mode-btn').forEach((btn) => {
+      const active = btn.dataset.mode === state.chartMode;
+      btn.className = 'chart-mode-btn rounded-lg px-3 py-1.5 font-semibold transition ' +
+        (active ? 'bg-leaf-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700');
+    });
+  }
+
+  function renderCurrencyButtons() {
+    document.querySelectorAll('.cur-btn').forEach((btn) => {
+      const active = btn.dataset.cur === state.currency;
+      btn.className = 'cur-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition ' +
+        (active ? 'bg-leaf-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700');
+    });
+  }
+
+  function renderBanner() {
+    if (isComtrade()) {
+      const m = window.COMTRADE_DATA?.meta || {};
+      const range = (m.oldestPeriod && m.newestPeriod)
+        ? (m.oldestPeriod === m.newestPeriod ? m.newestPeriod : `${m.oldestPeriod} – ${m.newestPeriod}`)
+        : '—';
+      $('#sourceText').innerHTML =
+        `กำลังแสดง<strong>ราคารายประเทศจริง</strong>จาก UN Comtrade — คำนวณจาก (มูลค่าการค้า ÷ น้ำหนัก) ของ<strong>เดือนล่าสุดที่แต่ละประเทศมีข้อมูล</strong> (ช่วง ${range})<br class="hidden sm:block"/>` +
+        `<span class="text-leaf-600">⚠ แต่ละประเทศอาจเป็นคนละเดือน (ข้อมูลศุลกากรมาช้า จึงตามหลังราคาตลาด Pink Sheet) · ไทย = ราคานำเข้า · ผู้ส่งออก = ราคา FOB · ดูเดือนจริงได้ใต้ราคาแต่ละการ์ด</span>`;
+      return;
+    }
+    const offsetMsg = state.useOffset
+      ? 'ราคารายประเทศเป็น <strong>ค่าประมาณ FOB</strong> (benchmark โลก ± ค่าขนส่ง/มาร์จินโดยประมาณ) — ไม่ใช่ราคาซื้อขายจริงรายประเทศ'
+      : 'กำลังแสดง <strong>ราคา benchmark โลกจริง</strong> ค่าเดียว ทุกประเทศตรงกัน';
+    $('#sourceText').innerHTML =
+      `ราคาฐาน (benchmark) เป็น<strong>ข้อมูลจริง</strong>จาก World Bank Pink Sheet · ${D.note || ''}<br class="hidden sm:block"/>` +
+      `<span class="text-leaf-600">${offsetMsg}</span>`;
+  }
+
+  /* =====================================================================
+     RENDER: country chips
+  ===================================================================== */
+  function renderCountryChips() {
+    const wrap = $('#countryChips');
+    wrap.innerHTML = '';
+    COUNTRIES.forEach((c) => {
+      const on = state.selected.has(c.code);
+      // ในโหมด Comtrade ติดธงถ้าประเทศนี้ไม่มีข้อมูลของปุ๋ยที่เลือก
+      const noData = isComtrade() && comtradeRec(c).noData;
+      const chip = document.createElement('button');
+      chip.className = 'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ' +
+        (on ? 'bg-leaf-50 border-leaf-400 text-leaf-700 shadow-sm' : 'bg-white border-stone-200 text-stone-400 hover:border-stone-300');
+      chip.innerHTML = `<span class="text-base leading-none">${c.flag}</span><span>${c.name}</span>` +
+        (noData ? '<span class="text-[10px] text-amber-500" title="ไม่มีข้อมูลใน Comtrade">⚠</span>'
+                : `<span class="w-2 h-2 rounded-full ${on?'':'opacity-30'}" style="background:${c.color}"></span>`);
+      chip.addEventListener('click', () => {
+        if (on) { if (state.selected.size > 1) state.selected.delete(c.code); }
+        else state.selected.add(c.code);
+        renderAll();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  /* =====================================================================
+     RENDER: price cards
+  ===================================================================== */
+  function renderCards() {
+    $('#cardFertName').textContent = fertDef().name;
+    const wrap = $('#priceCards');
+    wrap.innerHTML = '';
+    COUNTRIES.filter((c) => state.selected.has(c.code)).forEach((c) => {
+      const card = document.createElement('div');
+      card.className = 'fade-in bg-white rounded-2xl border border-stone-200 shadow-sm p-4 relative overflow-hidden';
+
+      const head = `
+        <div class="absolute top-0 left-0 w-1.5 h-full" style="background:${c.color}"></div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xl leading-none">${c.flag}</span>
+          <span class="text-sm font-semibold text-slate-600 truncate">${c.name}</span>
+          ${c.isHome ? '<span class="ml-auto text-[10px] font-bold text-leaf-600 bg-leaf-50 px-1.5 py-0.5 rounded">ไทย</span>' : ''}
+        </div>`;
+
+      if (isComtrade()) {
+        const rec = comtradeRec(c);
+        if (rec.noData) {
+          card.innerHTML = head + `
+            <div class="text-lg font-bold text-stone-300 tracking-tight mt-1">ไม่มีข้อมูล</div>
+            <div class="text-[11px] text-amber-500 mt-1 leading-tight">${NO_DATA_REASON[rec.reason] || 'ไม่มีข้อมูล'}</div>`;
+        } else {
+          card.innerHTML = head + `
+            <div class="text-2xl font-bold text-slate-800 tracking-tight">${fmt(rec.price)}</div>
+            <div class="text-xs text-stone-400 mb-2">${unitLabel()}</div>
+            <div class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg bg-stone-50 text-stone-500">
+              ${rec.flow === 'M' ? 'นำเข้า' : 'ส่งออก FOB'} · ${rec.periodLabel} · ${rec.volumeKt.toLocaleString()} kt
+            </div>`;
+        }
+        wrap.appendChild(card);
+        return;
+      }
+
+      // Pink Sheet
+      const s = countrySeries(c);
+      const latest = s[s.length - 1], prev = s[s.length - 2];
+      const diff = (latest != null && prev != null) ? latest - prev : 0;
+      const pct = prev ? ((diff / prev) * 100).toFixed(1) : '0.0';
+      const up = diff >= 0;
+      card.innerHTML = head + `
+        <div class="text-2xl font-bold text-slate-800 tracking-tight">${fmt(latest)}</div>
+        <div class="text-xs text-stone-400 mb-2">${unitLabel()}</div>
+        <div class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${up?'text-leaf-700 bg-leaf-50':'text-red-600 bg-red-50'}">
+          <span>${up?'▲':'▼'}</span><span>${fmt(Math.abs(diff))} (${up?'+':''}${pct}%)</span>
+        </div>`;
+      wrap.appendChild(card);
+    });
+  }
+
+  /* =====================================================================
+     RENDER: chart  (Pink Sheet = เส้น trend / Comtrade = แท่งเทียบ)
+  ===================================================================== */
+  let chart;
+  function renderChart() {
+    if (chart) chart.destroy();
+
+    if (isComtrade()) {
+      const cs = COUNTRIES.filter((c) => state.selected.has(c.code));
+      const withData = cs.filter((c) => !comtradeRec(c).noData);
+      $('#chartSub').textContent = `ราคารายประเทศล่าสุด · UN Comtrade · หน่วย: ${unitLabel()}`;
+      chart = new Chart($('#trendChart'), {
+        type: 'bar',
+        data: {
+          labels: withData.map((c) => `${c.flag} ${c.name}`),
+          datasets: [{
+            label: unitLabel(),
+            data: withData.map((c) => convert(comtradeRec(c).price)),
+            backgroundColor: withData.map((c) => c.color + 'cc'),
+            borderColor: withData.map((c) => c.color),
+            borderWidth: 1.5, borderRadius: 6,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#27482c', padding: 12, titleFont:{family:'Sarabun'}, bodyFont:{family:'Sarabun'},
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.y.toLocaleString()} ${unitLabel()}`,
+                afterLabel: (ctx) => { const c = withData[ctx.dataIndex]; const r = comtradeRec(c);
+                  return `${r.flow==='M'?'นำเข้า':'ส่งออก FOB'} · ${r.periodLabel} · ${r.volumeKt.toLocaleString()} kt`; },
+              },
+            },
+          },
+          scales: {
+            y: { beginAtZero: true, grid:{color:'#f0ede8'}, ticks:{font:{family:'Sarabun'},callback:(v)=>v.toLocaleString()},
+                 title:{display:true,text:unitLabel(),font:{family:'Sarabun'},color:'#94a3b8'} },
+            x: { grid:{display:false}, ticks:{font:{family:'Sarabun'}} },
+          },
+        },
+      });
+      return;
+    }
+
+    // Pink Sheet
+    const labels = monthLabels();
+    const isMoM = state.chartMode === 'mom';
+
+    if (isMoM) {
+      // % เปลี่ยนแปลงรายเดือน (MoM) — จุดแรกเป็น null เพราะไม่มีเดือนก่อนหน้าให้เทียบ
+      const datasets = COUNTRIES.filter((c) => state.selected.has(c.code)).map((c) => {
+        const s = countrySeries(c);
+        const mom = s.map((v, i) => (i === 0 || s[i-1] == null || v == null) ? null
+          : Math.round(((v - s[i-1]) / s[i-1]) * 1000) / 10);
+        return {
+          label: `${c.flag} ${c.name}`,
+          data: mom,
+          borderColor: c.color, backgroundColor: c.color + '20',
+          borderWidth: c.isHome ? 3.5 : 2,
+          pointRadius: 3, pointHoverRadius: 6, tension: 0.35, fill: false, spanGaps: true,
+        };
+      });
+      $('#chartSub').textContent = `% เปลี่ยนแปลงรายเดือน (MoM) · ${state.range} เดือน` + (state.useOffset ? ' · รวมค่าประมาณ FOB' : ' · benchmark โลก');
+      chart = new Chart($('#trendChart'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'line', padding: 16, font: { family:'Sarabun', size:12 } } },
+            tooltip: {
+              backgroundColor: '#27482c', padding: 12, titleFont: { family:'Sarabun' }, bodyFont: { family:'Sarabun' },
+              callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%` },
+            },
+          },
+          scales: {
+            y: { grid: { color:'#f0ede8' }, ticks: { font:{family:'Sarabun'}, callback:(v)=>(v>0?'+':'')+v+'%' },
+                 title: { display:true, text:'% เปลี่ยนแปลง', font:{family:'Sarabun'}, color:'#94a3b8' } },
+            x: { grid: { display:false }, ticks: { font:{family:'Sarabun'} } },
+          },
+        },
+      });
+      return;
+    }
+
+    // Pink Sheet — เส้น trend (ราคา)
+    const datasets = COUNTRIES.filter((c) => state.selected.has(c.code)).map((c) => ({
+      label: `${c.flag} ${c.name}`,
+      data: countrySeries(c).map(convert),
+      borderColor: c.color, backgroundColor: c.color + '20',
+      borderWidth: c.isHome ? 3.5 : 2,
+      pointRadius: 3, pointHoverRadius: 6, tension: 0.35, fill: false, spanGaps: true,
+    }));
+    $('#chartSub').textContent = `Price Trend · ${state.range} เดือน · หน่วย: ${unitLabel()}` + (state.useOffset ? ' · รวมค่าประมาณ FOB' : ' · benchmark โลก');
+    chart = new Chart($('#trendChart'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'line', padding: 16, font: { family:'Sarabun', size:12 } } },
+          tooltip: {
+            backgroundColor: '#27482c', padding: 12, titleFont: { family:'Sarabun' }, bodyFont: { family:'Sarabun' },
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} ${unitLabel()}` },
+          },
+        },
+        scales: {
+          y: { grid: { color:'#f0ede8' }, ticks: { font:{family:'Sarabun'}, callback:(v)=>v.toLocaleString() },
+               title: { display:true, text:unitLabel(), font:{family:'Sarabun'}, color:'#94a3b8' } },
+          x: { grid: { display:false }, ticks: { font:{family:'Sarabun'} } },
+        },
+      },
+    });
+  }
+
+  /* =====================================================================
+     RENDER: insight
+  ===================================================================== */
+  function renderInsight() {
+    const box = $('#insightBox'); box.innerHTML = '';
+    const row = (label,val,color,sub)=>`
+      <div class="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2.5">
+        <div>
+          <div class="text-xs text-stone-400">${label}</div>
+          <div class="font-semibold text-slate-700">${val}</div>
+          ${sub?`<div class="text-xs text-stone-400 mt-0.5">${sub}</div>`:''}
+        </div>
+        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color}"></span>
+      </div>`;
+
+    // เอาเฉพาะประเทศที่ "มีราคา" จริง
+    const list = COUNTRIES.filter((c) => state.selected.has(c.code))
+      .map((c) => ({ ...c, latest: latestPrice(c) }))
+      .filter((c) => c.latest != null);
+
+    if (!list.length) {
+      box.innerHTML = '<div class="text-sm text-stone-400 rounded-xl bg-stone-50 px-3 py-4 text-center">ไม่มีข้อมูลราคาสำหรับปุ๋ยชนิดนี้ในกลุ่มประเทศที่เลือก</div>';
+      return;
+    }
+
+    const cheapest = list.reduce((a,b)=> b.latest < a.latest ? b : a);
+    const priciest = list.reduce((a,b)=> b.latest > a.latest ? b : a);
+    box.insertAdjacentHTML('beforeend', row('ราคาถูกที่สุด', `${cheapest.flag} ${cheapest.name}`, cheapest.color, `${fmt(cheapest.latest)} ${unitLabel()}`));
+    box.insertAdjacentHTML('beforeend', row('ราคาแพงที่สุด', `${priciest.flag} ${priciest.name}`, priciest.color, `${fmt(priciest.latest)} ${unitLabel()}`));
+
+    const th = getCountry('TH');
+    const thLatest = latestPrice(th);
+    if (state.selected.has('TH') && thLatest != null) {
+      const gap = thLatest - cheapest.latest;
+      const gapPct = cheapest.latest ? ((gap / cheapest.latest) * 100).toFixed(1) : 0;
+      const sub = cheapest.code === 'TH' ? 'ไทยเป็นราคาถูกที่สุดในกลุ่มที่เลือก'
+        : `ไทยสูงกว่าราคาถูกสุด ${fmt(gap)} ${unitLabel()} (+${gapPct}%)`;
+      box.insertAdjacentHTML('beforeend', row('ราคาไทย', `${fmt(thLatest)} ${unitLabel()}`, th.color, sub));
+    }
+  }
+
+  /* =====================================================================
+     RENDER: table
+  ===================================================================== */
+  function renderTable() {
+    const body = $('#compareTable'); body.innerHTML = '';
+    const th = getCountry('TH');
+    const thLatest = latestPrice(th);
+
+    // ปรับหัวตารางตามแหล่ง
+    $('#colMin').textContent = isComtrade() ? 'ทิศทางการค้า' : 'ต่ำสุด';
+    $('#colMax').textContent = isComtrade() ? 'ปี / ปริมาณ' : 'สูงสุด';
+    $('#colChange').textContent = isComtrade() ? 'แหล่ง' : 'เปลี่ยนแปลง';
+
+    COUNTRIES.filter((c) => state.selected.has(c.code)).forEach((c) => {
+      const tr = document.createElement('tr');
+      tr.className = c.isHome ? 'bg-leaf-50/40' : 'hover:bg-stone-50';
+      const nameCell = `
+        <td class="px-4 sm:px-5 py-3"><div class="flex items-center gap-2">
+          <span class="text-lg">${c.flag}</span><span class="font-medium text-slate-700">${c.name}</span>
+          ${c.isHome?'<span class="text-[10px] font-bold text-leaf-600 bg-leaf-100 px-1.5 py-0.5 rounded">ไทย</span>':''}
+        </div></td>`;
+
+      if (isComtrade()) {
+        const rec = comtradeRec(c);
+        if (rec.noData) {
+          tr.innerHTML = nameCell +
+            `<td class="px-4 py-3 text-right text-stone-300">—</td>` +
+            `<td class="px-4 py-3 text-right text-xs text-amber-500">${NO_DATA_REASON[rec.reason] || 'ไม่มีข้อมูล'}</td>` +
+            `<td class="px-4 py-3 text-right text-stone-300 hidden sm:table-cell">—</td>` +
+            `<td class="px-4 py-3 text-right text-stone-300 hidden sm:table-cell">—</td>` +
+            `<td class="px-4 sm:px-5 py-3 text-right text-stone-300">—</td>`;
+        } else {
+          const vsTh = (thLatest != null) ? rec.price - thLatest : null;
+          const vsThTxt = c.isHome ? '<span class="text-stone-400">— ฐานอ้างอิง —</span>'
+            : (vsTh == null ? '—' : `<span class="${vsTh>0?'text-red-600':'text-leaf-700'} font-semibold">${vsTh>0?'+':''}${fmt(vsTh)}</span>`);
+          tr.innerHTML = nameCell +
+            `<td class="px-4 py-3 text-right font-semibold text-slate-800">${fmt(rec.price)}</td>` +
+            `<td class="px-4 py-3 text-right text-stone-500">UN Comtrade</td>` +
+            `<td class="px-4 py-3 text-right text-stone-500 hidden sm:table-cell">${rec.flow==='M'?'นำเข้า':'ส่งออก'}</td>` +
+            `<td class="px-4 py-3 text-right text-stone-500 hidden sm:table-cell">${rec.periodLabel} · ${rec.volumeKt.toLocaleString()}kt</td>` +
+            `<td class="px-4 sm:px-5 py-3 text-right">${vsThTxt}</td>`;
+        }
+        body.appendChild(tr);
+        return;
+      }
+
+      // Pink Sheet
+      const s = countrySeries(c).filter((v) => v != null);
+      const latest = s[s.length - 1], prev = s[s.length - 2];
+      const diff = latest - prev, pct = prev ? ((diff/prev)*100).toFixed(1) : '0.0';
+      const up = diff >= 0;
+      const min = Math.min(...s), max = Math.max(...s);
+      const vsTh = latest - thLatest;
+      const vsThTxt = c.isHome ? '<span class="text-stone-400">— ฐานอ้างอิง —</span>'
+        : `<span class="${vsTh>0?'text-red-600':'text-leaf-700'} font-semibold">${vsTh>0?'+':''}${fmt(vsTh)}</span>`;
+      tr.innerHTML = nameCell +
+        `<td class="px-4 py-3 text-right font-semibold text-slate-800">${fmt(latest)}</td>` +
+        `<td class="px-4 py-3 text-right"><span class="${up?'text-leaf-700':'text-red-600'} font-medium">${up?'▲':'▼'} ${up?'+':''}${pct}%</span></td>` +
+        `<td class="px-4 py-3 text-right text-stone-500 hidden sm:table-cell">${fmt(min)}</td>` +
+        `<td class="px-4 py-3 text-right text-stone-500 hidden sm:table-cell">${fmt(max)}</td>` +
+        `<td class="px-4 sm:px-5 py-3 text-right">${vsThTxt}</td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  /* =====================================================================
+     EXPORT CSV
+  ===================================================================== */
+  function exportCSV() {
+    let rows;
+    if (isComtrade()) {
+      rows = [['ประเทศ', 'ราคา (' + unitLabel() + ')', 'ทิศทาง', 'เดือนข้อมูล', 'ปริมาณ(kt)', 'หมายเหตุ']];
+      COUNTRIES.filter((c)=>state.selected.has(c.code)).forEach((c)=>{
+        const r = comtradeRec(c);
+        rows.push(r.noData
+          ? [c.name, '', '', '', '', NO_DATA_REASON[r.reason] || 'ไม่มีข้อมูล']
+          : [c.name, Math.round(convert(r.price)), r.flow==='M'?'นำเข้า':'ส่งออก', r.periodLabel, r.volumeKt, 'UN Comtrade']);
+      });
+    } else {
+      const labels = monthLabels();
+      rows = [['ประเทศ', ...labels, 'หน่วย']];
+      COUNTRIES.filter((c)=>state.selected.has(c.code)).forEach((c)=>{
+        rows.push([c.name, ...countrySeries(c).map((v)=>convert(v)??''), unitLabel()]);
+      });
+    }
+    const csv = '﻿' + rows.map((r)=>r.join(',')).join('\n'); // BOM กัน Excel อ่านไทยเพี้ยน
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `fertilizer-${state.source}-${state.fert}.csv`;
+    a.click();
+  }
+
+  /* =====================================================================
+     RENDER ALL
+  ===================================================================== */
+  function renderAll() {
+    renderSourceButtons();
+    renderCurrencyButtons();
+    renderBanner();
+    renderCountryChips();
+    renderCards();
+    renderChart();
+    renderInsight();
+    renderTable();
+  }
+
+  /* =====================================================================
+     FX RATE — ดึงอัตราแลกเปลี่ยน USD→THB จริง (open.er-api.com, ฟรี ไม่ต้อง key)
+     ส่ง CORS header จึง fetch จากหน้าเว็บได้ตรง ถ้าล่ม -> คงค่า fallback 36.50
+  ===================================================================== */
+  async function loadFxRate() {
+    const status = $('#fxStatus');
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
+      const j = await res.json();
+      const thb = j && j.rates && j.rates.THB;
+      if (j.result !== 'success' || !thb) throw new Error('no rate');
+      // ไม่ทับถ้าผู้ใช้แก้เรตเอง
+      if (!state.fxManual) {
+        state.fxRate = Math.round(thb * 100) / 100;
+        $('#fxRate').value = state.fxRate.toFixed(2);
+        if (state.currency === 'THB') renderAll();
+      }
+      // วันที่อัปเดตเรต (เช่น "Mon, 29 Jun 2026")
+      const d = (j.time_last_update_utc || '').replace(/\s\d{2}:.*$/, '').replace(/^\w+,\s/, '');
+      status.innerHTML = `<span class="text-leaf-500">●</span> เรตจริง ${state.fxRate.toFixed(2)} ฿ · ${d}`;
+    } catch (e) {
+      status.innerHTML = '<span class="text-stone-400">●</span> ใช้เรตสำรอง 36.50 (ดึงเรตล่าสุดไม่สำเร็จ)';
+    }
+  }
+
+  /* =====================================================================
+     INIT
+  ===================================================================== */
+  function init() {
+    if (!D || !D.benchmark) {
+      document.body.innerHTML = '<div style="padding:3rem;text-align:center;font-family:Sarabun">⚠️ ไม่พบไฟล์ data.js — รันคำสั่ง <code>node build-data.js</code> ก่อน แล้วเปิดหน้านี้ใหม่</div>';
+      return;
+    }
+    const sel = $('#fertSelect');
+    FERTILIZERS.forEach((f) => { const o = document.createElement('option'); o.value=f.id; o.textContent=f.name; sel.appendChild(o); });
+    sel.value = state.fert;
+    sel.addEventListener('change', (e)=>{ state.fert = e.target.value; renderAll(); });
+
+    // source toggle
+    document.querySelectorAll('.src-btn').forEach((btn)=> btn.addEventListener('click', ()=>{
+      if (btn.dataset.src === 'comtrade' && !CT) {
+        alert('ยังไม่พบไฟล์ data-comtrade.js — รัน node build-comtrade.js ก่อนครับ');
+        return;
+      }
+      state.source = btn.dataset.src; renderAll();
+    }));
+
+    document.querySelectorAll('.cur-btn').forEach((btn)=> btn.addEventListener('click', ()=>{ state.currency = btn.dataset.cur; renderAll(); }));
+
+    $('#fxRate').addEventListener('input', (e)=>{ const v=parseFloat(e.target.value); state.fxRate = isNaN(v)?0:v; state.fxManual = true; $('#fxStatus').innerHTML = '<span class="text-amber-500">●</span> กำหนดเอง'; if(state.currency==='THB') renderAll(); });
+    $('#rangeSelect').addEventListener('change', (e)=>{ state.range = +e.target.value; renderAll(); });
+    $('#offsetToggle').addEventListener('change', (e)=>{ state.useOffset = e.target.checked; renderAll(); });
+    document.querySelectorAll('.chart-mode-btn').forEach((btn)=> btn.addEventListener('click', ()=>{ state.chartMode = btn.dataset.mode; renderAll(); }));
+    $('#exportBtn').addEventListener('click', exportCSV);
+
+    $('#resetBtn').addEventListener('click', ()=>{
+      state.source='pinksheet'; state.fert='urea'; state.currency='USD'; state.fxRate=36.5; state.fxManual=false; state.range=6; state.useOffset=true; state.chartMode='price';
+      state.selected = new Set(COUNTRIES.map((c)=>c.code));
+      $('#fertSelect').value='urea'; $('#fxRate').value='36.50'; $('#rangeSelect').value='6'; $('#offsetToggle').checked=true;
+      renderAll();
+      loadFxRate(); // ดึงเรตล่าสุดอีกครั้ง
+    });
+
+    $('#lastUpdate').textContent = D.months.at(-1);
+    $('#srcLink').href = D.sourceUrl || '#';
+
+    renderAll();
+    loadFxRate(); // ดึงอัตราแลกเปลี่ยนจริงตอนเปิดหน้า
+  }
+
+  init();
+  </script>
+</body>
+</html>
