@@ -1,1 +1,67 @@
+name: Update fertilizer data & deploy
 
+# เมื่อไรให้รัน
+on:
+  # ต้นเดือน วันที่ 2-7 เวลา 00:07 UTC (~7 โมงเช้าไทย) — ช่วง World Bank ออกไฟล์ใหม่
+  schedule:
+    - cron: '7 0 2-7 * *'
+  # กดรันเองได้จากแท็บ Actions
+  workflow_dispatch:
+  # ทุกครั้งที่ push โค้ดขึ้น main (เพื่อ deploy หน้าเว็บใหม่)
+  push:
+    branches: [main]
+
+# สิทธิ์ที่ workflow ต้องใช้
+permissions:
+  contents: write   # commit ไฟล์ data.js ที่อัปเดต
+  pages: write      # deploy GitHub Pages
+  id-token: write
+
+# กันรันซ้อนกัน
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Update data (Pink Sheet + Comtrade)
+        env:
+          COMTRADE_KEY: ${{ secrets.COMTRADE_KEY }}
+        run: node update-all.js
+
+      - name: Commit updated data (ถ้ามีการเปลี่ยนแปลง)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.js data-comtrade.js update.log
+          if git diff --staged --quiet; then
+            echo "ไม่มีข้อมูลใหม่ — ไม่ commit"
+          else
+            git commit -m "chore: auto-update fertilizer data [skip ci]"
+            git push
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'   # เสิร์ฟทั้งโฟลเดอร์ (index.html + data.js อยู่ราก)
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
