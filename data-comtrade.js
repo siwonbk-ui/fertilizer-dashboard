@@ -4,10 +4,10 @@ window.COMTRADE_DATA = {
   "fertilizers": {
     "urea": {
       "TH": {
-        "price": 403.09,
-        "period": "202502",
-        "periodLabel": "ก.พ. 68",
-        "volumeKt": 193,
+        "price": 788.29,
+        "period": "202605",
+        "periodLabel": "พ.ค. 69",
+        "volumeKt": 48,
         "flow": "M"
       },
       "RU": {
@@ -17,10 +17,10 @@ window.COMTRADE_DATA = {
         "flow": "X"
       },
       "SA": {
-        "price": 437.5,
-        "period": "202507",
-        "periodLabel": "ก.ค. 68",
-        "volumeKt": 348,
+        "price": 801.71,
+        "period": "202604",
+        "periodLabel": "เม.ย. 69",
+        "volumeKt": 158,
         "flow": "X"
       },
       "BN": {
@@ -30,17 +30,16 @@ window.COMTRADE_DATA = {
         "flow": "X"
       },
       "ID": {
-        "price": 488.46,
-        "period": "202604",
-        "periodLabel": "เม.ย. 69",
-        "volumeKt": 61,
+        "price": 668.88,
+        "period": "202605",
+        "periodLabel": "พ.ค. 69",
+        "volumeKt": 33,
         "flow": "X"
       },
       "CN": {
-        "price": 355.13,
-        "period": "202408",
-        "periodLabel": "ส.ค. 67",
-        "volumeKt": 26,
+        "price": null,
+        "noData": true,
+        "reason": "lowVolume",
         "flow": "X"
       }
     },
@@ -58,10 +57,10 @@ window.COMTRADE_DATA = {
         "flow": "X"
       },
       "SA": {
-        "price": 865.18,
-        "period": "202507",
-        "periodLabel": "ก.ค. 68",
-        "volumeKt": 364,
+        "price": 862.82,
+        "period": "202604",
+        "periodLabel": "เม.ย. 69",
+        "volumeKt": 298,
         "flow": "X"
       },
       "BN": {
@@ -86,10 +85,10 @@ window.COMTRADE_DATA = {
     },
     "mop": {
       "TH": {
-        "price": 376.17,
-        "period": "202502",
-        "periodLabel": "ก.พ. 68",
-        "volumeKt": 60,
+        "price": 414.97,
+        "period": "202605",
+        "periodLabel": "พ.ค. 69",
+        "volumeKt": 90,
         "flow": "M"
       },
       "RU": {
@@ -169,8 +168,8 @@ window.COMTRADE_DATA = {
     "sourceUrl": "https://comtradeplus.un.org",
     "method": "unit value = primaryValue / netWeight (USD per metric ton), World aggregate, monthly",
     "note": "ราคา = มูลค่าการค้า ÷ น้ำหนัก ของ \"เดือนล่าสุดที่แต่ละประเทศมีข้อมูล\" · ไทย=ราคานำเข้า, อื่นๆ=ราคาส่งออก FOB · แต่ละประเทศอาจคนละเดือน (Comtrade เป็นข้อมูลศุลกากรย้อนหลัง)",
-    "newestPeriod": "เม.ย. 69",
-    "oldestPeriod": "ส.ค. 67",
+    "newestPeriod": "พ.ค. 69",
+    "oldestPeriod": "ก.ย. 67",
     "fertNames": {
       "urea": "ยูเรีย 46-0-0",
       "dap": "ฟอสเฟต (DAP 18-46-0)",
