@@ -30,10 +30,10 @@ window.COMTRADE_DATA = {
         "flow": "X"
       },
       "ID": {
-        "price": 668.88,
-        "period": "202605",
-        "periodLabel": "พ.ค. 69",
-        "volumeKt": 33,
+        "price": 614.78,
+        "period": "202606",
+        "periodLabel": "มิ.ย. 69",
+        "volumeKt": 116,
         "flow": "X"
       },
       "CN": {
@@ -116,10 +116,9 @@ window.COMTRADE_DATA = {
         "flow": "X"
       },
       "CN": {
-        "price": 363.25,
-        "period": "202409",
-        "periodLabel": "ก.ย. 67",
-        "volumeKt": 12,
+        "price": null,
+        "noData": true,
+        "reason": "lowVolume",
         "flow": "X"
       }
     },
@@ -168,8 +167,8 @@ window.COMTRADE_DATA = {
     "sourceUrl": "https://comtradeplus.un.org",
     "method": "unit value = primaryValue / netWeight (USD per metric ton), World aggregate, monthly",
     "note": "ราคา = มูลค่าการค้า ÷ น้ำหนัก ของ \"เดือนล่าสุดที่แต่ละประเทศมีข้อมูล\" · ไทย=ราคานำเข้า, อื่นๆ=ราคาส่งออก FOB · แต่ละประเทศอาจคนละเดือน (Comtrade เป็นข้อมูลศุลกากรย้อนหลัง)",
-    "newestPeriod": "พ.ค. 69",
-    "oldestPeriod": "ก.ย. 67",
+    "newestPeriod": "มิ.ย. 69",
+    "oldestPeriod": "ธ.ค. 67",
     "fertNames": {
       "urea": "ยูเรีย 46-0-0",
       "dap": "ฟอสเฟต (DAP 18-46-0)",
