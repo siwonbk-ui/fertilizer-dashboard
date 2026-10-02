@@ -30,10 +30,10 @@ window.COMTRADE_DATA = {
         "flow": "X"
       },
       "ID": {
-        "price": 614.78,
-        "period": "202606",
-        "periodLabel": "มิ.ย. 69",
-        "volumeKt": 116,
+        "price": 413.81,
+        "period": "202607",
+        "periodLabel": "ก.ค. 69",
+        "volumeKt": 94,
         "flow": "X"
       },
       "CN": {
@@ -167,7 +167,7 @@ window.COMTRADE_DATA = {
     "sourceUrl": "https://comtradeplus.un.org",
     "method": "unit value = primaryValue / netWeight (USD per metric ton), World aggregate, monthly",
     "note": "ราคา = มูลค่าการค้า ÷ น้ำหนัก ของ \"เดือนล่าสุดที่แต่ละประเทศมีข้อมูล\" · ไทย=ราคานำเข้า, อื่นๆ=ราคาส่งออก FOB · แต่ละประเทศอาจคนละเดือน (Comtrade เป็นข้อมูลศุลกากรย้อนหลัง)",
-    "newestPeriod": "มิ.ย. 69",
+    "newestPeriod": "ก.ค. 69",
     "oldestPeriod": "ธ.ค. 67",
     "fertNames": {
       "urea": "ยูเรีย 46-0-0",
