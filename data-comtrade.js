@@ -4,10 +4,9 @@ window.COMTRADE_DATA = {
   "fertilizers": {
     "urea": {
       "TH": {
-        "price": 788.29,
-        "period": "202605",
-        "periodLabel": "พ.ค. 69",
-        "volumeKt": 48,
+        "price": null,
+        "noData": true,
+        "reason": "noReport",
         "flow": "M"
       },
       "RU": {
