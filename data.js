@@ -3,13 +3,12 @@
 window.FERT_DATA = {
   "source": "World Bank Commodity Price Data (The Pink Sheet)",
   "sourceUrl": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
-  "note": "Updated on October 02, 2026",
+  "note": "Updated on November 03, 2026",
   "currency": "USD",
   "unit": "mt",
   "generatedFrom": "CMO-Historical-Data-Monthly.xlsx",
-  "latestPeriod": "2026-09",
+  "latestPeriod": "2026-10",
   "months": [
-    "ก.ย. 68",
     "ต.ค. 68",
     "พ.ย. 68",
     "ธ.ค. 68",
@@ -21,10 +20,10 @@ window.FERT_DATA = {
     "มิ.ย. 69",
     "ก.ค. 69",
     "ส.ค. 69",
-    "ก.ย. 69"
+    "ก.ย. 69",
+    "ต.ค. 69"
   ],
   "monthsIso": [
-    "2025-09",
     "2025-10",
     "2025-11",
     "2025-12",
@@ -36,11 +35,11 @@ window.FERT_DATA = {
     "2026-06",
     "2026-07",
     "2026-08",
-    "2026-09"
+    "2026-09",
+    "2026-10"
   ],
   "benchmark": {
     "urea": [
-      461.1,
       394.4,
       409.3,
       392.5,
@@ -52,10 +51,10 @@ window.FERT_DATA = {
       453.1,
       400,
       390,
-      407.5
+      407.5,
+      420
     ],
     "dap": [
-      780.6,
       754,
       708.3,
       627.5,
@@ -67,10 +66,10 @@ window.FERT_DATA = {
       783.8,
       781.3,
       793.5,
-      800.6
+      800.6,
+      803.1
     ],
     "phosphate_rock": [
-      152.5,
       152.5,
       152.5,
       152.5,
@@ -82,10 +81,10 @@ window.FERT_DATA = {
       156.9,
       170,
       170,
+      170,
       170
     ],
     "mop": [
-      352.5,
       352,
       353.8,
       358.3,
@@ -97,7 +96,8 @@ window.FERT_DATA = {
       402.5,
       396.5,
       386.9,
-      367.5
+      367.5,
+      357.5
     ]
   }
 };
